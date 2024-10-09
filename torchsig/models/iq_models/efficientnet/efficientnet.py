@@ -179,7 +179,7 @@ def efficientnet_b0(
     mdl = create_effnet(
         timm.create_model(
             "efficientnet_b0",
-            num_classes=num_classes,
+            num_classes=53,
             in_chans=2,
             drop_path_rate=drop_path_rate,
             drop_rate=drop_rate,
@@ -227,7 +227,7 @@ def efficientnet_b2(
     mdl = create_effnet(
         timm.create_model(
             "efficientnet_b2",
-            num_classes=num_classes,
+            num_classes=53,
             in_chans=2,
             drop_path_rate=drop_path_rate,
             drop_rate=drop_rate,
@@ -275,7 +275,7 @@ def efficientnet_b4(
     mdl = create_effnet(
         timm.create_model(
             "efficientnet_b4",
-            num_classes=num_classes,
+            num_classes=53,
             in_chans=2,
             drop_path_rate=drop_path_rate,
             drop_rate=drop_rate,
