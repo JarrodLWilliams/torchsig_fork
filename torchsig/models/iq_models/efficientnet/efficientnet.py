@@ -189,6 +189,7 @@ def efficientnet_b0(
         mdl.load_state_dict(torch.load(path))
     if num_classes != 53:
         mdl.classifier = nn.Linear(mdl.classifier.in_features, num_classes)
+        mdl.num_classes = num_classes
     return mdl
 
 
@@ -237,6 +238,7 @@ def efficientnet_b2(
         mdl.load_state_dict(torch.load(path))
     if num_classes != 53:
         mdl.classifier = nn.Linear(mdl.classifier.in_features, num_classes)
+        mdl.num_classes = num_classes
     return mdl
 
 
@@ -285,4 +287,5 @@ def efficientnet_b4(
         mdl.load_state_dict(torch.load(path))
     if num_classes != 53:
         mdl.classifier = nn.Linear(mdl.classifier.in_features, num_classes)
+        mdl.num_classes = num_classes
     return mdl
