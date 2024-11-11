@@ -1,13 +1,9 @@
-"""Modulations Dataset for Narrowband
-"""
-
 from typing import Callable, List, Optional
 
 import numpy as np
 from torch.utils.data import ConcatDataset
 
-from torchsig.datasets.synthetic import ModulateNarrowbandDataset, OFDMDataset
-from torchsig.datasets.signal_classes import torchsig_signals
+from torchsig.datasets.synthetic import DigitalModulationDataset, OFDMDataset
 from torchsig.transforms import (
     Compose,
     IQImbalance,
@@ -85,7 +81,61 @@ class ModulationsDataset(ConcatDataset):
 
     """
 
-    default_classes: List[str] = torchsig_signals.class_list
+    default_classes: List[str] = [
+        "ook",
+        "bpsk",
+        "4pam",
+        "4ask",
+        "qpsk",
+        "8pam",
+        "8ask",
+        "8psk",
+        "16qam",
+        "16pam",
+        "16ask",
+        "16psk",
+        "32qam",
+        "32qam_cross",
+        "32pam",
+        "32ask",
+        "32psk",
+        "64qam",
+        "64pam",
+        "64ask",
+        "64psk",
+        "128qam_cross",
+        "256qam",
+        "512qam_cross",
+        "1024qam",
+        "2fsk",
+        "2gfsk",
+        "2msk",
+        "2gmsk",
+        "4fsk",
+        "4gfsk",
+        "4msk",
+        "4gmsk",
+        "8fsk",
+        "8gfsk",
+        "8msk",
+        "8gmsk",
+        "16fsk",
+        "16gfsk",
+        "16msk",
+        "16gmsk",
+        "ofdm-64",
+        "ofdm-72",
+        "ofdm-128",
+        "ofdm-180",
+        "ofdm-256",
+        "ofdm-300",
+        "ofdm-512",
+        "ofdm-600",
+        "ofdm-900",
+        "ofdm-1024",
+        "ofdm-1200",
+        "ofdm-2048",
+    ]
 
     def __init__(
         self,
@@ -100,12 +150,7 @@ class ModulationsDataset(ConcatDataset):
         target_transform: Optional[Callable] = None,
         **kwargs,
     ) -> None:
-        classes = ModulationsDataset.default_classes if classes is None else classes
-        for c in classes:
-            if 'ofdm' in c:
-                size = int(c.split('-')[1])
-                assert size<=num_iq_samples, f"{c} has a native size larger than the {num_iq_samples} IQ samples requested. Increase the number of IQ samples, or remove this class"
-    
+        classes = self.default_classes if classes is None else classes
         # Set the target transform based on input options if none provided
         if not target_transform:
             if use_class_idx:
@@ -182,7 +227,7 @@ class ModulationsDataset(ConcatDataset):
             )
 
         if num_digital > 0:
-            digital_dataset = ModulateNarrowbandDataset(
+            digital_dataset = DigitalModulationDataset(
                 modulations=digital_classes,  # effectively uses all modulations
                 num_iq_samples=num_iq_samples,
                 num_samples_per_class=num_samples_per_class,
@@ -196,7 +241,14 @@ class ModulationsDataset(ConcatDataset):
         if num_ofdm > 0:
             sidelobe_suppression_methods = ("lpf", "win_start")
             ofdm_dataset = OFDMDataset(
-                constellations=torchsig_signals.ofdm_subcarrier_modulations, # sub-carrier modulations
+                constellations=(
+                    "bpsk",
+                    "qpsk",
+                    "16qam",
+                    "64qam",
+                    "256qam",
+                    "1024qam",
+                ),  # sub-carrier modulations
                 num_subcarriers=num_subcarriers,  # possible number of subcarriers
                 num_iq_samples=num_iq_samples,
                 num_samples_per_class=num_samples_per_class,
