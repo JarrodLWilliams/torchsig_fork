@@ -148,6 +148,7 @@ class ModulationsDataset(ConcatDataset):
         eb_no: bool = False,
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
+        pulse_shaping_filter: Optional[Callable] = None,
         **kwargs,
     ) -> None:
         classes = self.default_classes if classes is None else classes
@@ -236,6 +237,7 @@ class ModulationsDataset(ConcatDataset):
                 random_pulse_shaping=random_pulse_shaping,
                 transform=internal_transforms,
                 target_transform=target_transform,
+                pulse_shaping_filter=pulse_shaping_filter,
             )
 
         if num_ofdm > 0:

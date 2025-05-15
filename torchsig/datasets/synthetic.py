@@ -8,7 +8,7 @@ from torchsig.utils.dsp import convolve, gaussian_taps, low_pass, rrc_taps, irra
 from torchsig.transforms.functional import FloatParameter, IntParameter
 from torchsig.utils.dataset import SignalDataset
 from torchsig.utils.dsp import estimate_filter_length
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Callable
 from torch.utils.data import ConcatDataset
 from scipy import signal as sp
 from collections import OrderedDict
@@ -163,6 +163,7 @@ class DigitalModulationDataset(ConcatDataset):
         random_data: bool = False,
         random_pulse_shaping: bool = False,
         user_const_map: Optional[OrderedDict] = None,
+        pulse_shaping_filter: Optional[Callable] = None,
         **kwargs,
     ) -> None:
         const_map = user_const_map if user_const_map else default_const_map
