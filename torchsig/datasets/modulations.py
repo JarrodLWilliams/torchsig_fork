@@ -149,8 +149,10 @@ class ModulationsDataset(ConcatDataset):
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
         pulse_shaping_filter: Optional[Callable] = None,
+        random_pulse_shaping_override: bool = False,
         **kwargs,
     ) -> None:
+        print('Warning: Custom Pulse Shaping is currently only implemented for FSK.')
         classes = self.default_classes if classes is None else classes
         # Set the target transform based on input options if none provided
         if not target_transform:
@@ -167,6 +169,7 @@ class ModulationsDataset(ConcatDataset):
         num_samples_per_class = int(num_samples / len(classes))
         self.class_dict = dict(zip(classes, range(len(classes))))
         self.include_snr = include_snr
+        
 
         # Extract class info
         ofdm_classes = []
@@ -216,16 +219,23 @@ class ModulationsDataset(ConcatDataset):
                     Normalize(norm=np.inf),
                 ]
             )
+        elif level == -1:
+            random_pulse_shaping = random_pulse_shaping_override
+            internal_transforms = Compose(
+                transform,
+                Normalize(norm=np.inf)
+            )
         else:
             raise ValueError("Level is unrecognized. Should be 0, 1 or 2.")
 
-        if transform is not None:
-            internal_transforms = Compose(
-                [
-                    internal_transforms,
-                    transform,
-                ]
-            )
+        if level > -1:
+            if transform is not None:
+                internal_transforms = Compose(
+                    [
+                        internal_transforms,
+                        transform,
+                    ]
+                )
 
         if num_digital > 0:
             digital_dataset = DigitalModulationDataset(
