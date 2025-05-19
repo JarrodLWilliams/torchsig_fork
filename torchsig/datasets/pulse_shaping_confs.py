@@ -7,13 +7,13 @@ class PulseShapingTrainConfig(conf.Sig53Config):
     level: int = 0
     seed: int = 246813579
     eb_no: bool = False
-    num_samples: int = 1e4
+    num_samples: int = 1e5
 
 @dataclass
 class PulseShapingValConfig(PulseShapingTrainConfig):
     name: str = 'clean_pulse_val'
     seed: int = 135792468
-    num_samples: int = 5e3
+    num_samples: int = 2e4
 
 @dataclass
 class PulseShapingTrainQAConfig(PulseShapingTrainConfig):
