@@ -8,7 +8,7 @@ from torchsig.utils.dsp import convolve, gaussian_taps, low_pass, rrc_taps, irra
 from torchsig.transforms.functional import FloatParameter, IntParameter
 from torchsig.utils.dataset import SignalDataset
 from torchsig.utils.dsp import estimate_filter_length
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Callable
 from torch.utils.data import ConcatDataset
 from scipy import signal as sp
 from collections import OrderedDict
@@ -163,6 +163,7 @@ class DigitalModulationDataset(ConcatDataset):
         random_data: bool = False,
         random_pulse_shaping: bool = False,
         user_const_map: Optional[OrderedDict] = None,
+        pulse_shaping_filter: Optional[Callable] = None,
         **kwargs,
     ) -> None:
         const_map = user_const_map if user_const_map else default_const_map
@@ -198,6 +199,7 @@ class DigitalModulationDataset(ConcatDataset):
             num_iq_samples=num_iq_samples,
             num_samples_per_class=num_samples_per_class,
             iq_samples_per_symbol=8,
+            pulse_shaping_filter=pulse_shaping_filter
             **kwargs,
         )
         gfsks_dataset = FSKDataset(
@@ -207,6 +209,7 @@ class DigitalModulationDataset(ConcatDataset):
             iq_samples_per_symbol=8,
             random_data=random_data,
             random_pulse_shaping=random_pulse_shaping,
+            pulse_shaping_filter=pulse_shaping_filter
             **kwargs,
         )
         super(DigitalModulationDataset, self).__init__([const_dataset, fsk_dataset, gfsks_dataset])
@@ -858,6 +861,7 @@ class FSKDataset(SyntheticDataset):
         random_pulse_shaping: bool = False,
         center_freq: float = 0,
         bandwidth: float = 0.5,
+        pulse_shaping_filter: Optional[Callable] = None,
         **kwargs,
     ):
         super(FSKDataset, self).__init__(**kwargs)
@@ -868,6 +872,7 @@ class FSKDataset(SyntheticDataset):
         self.random_data = random_data
         self.random_pulse_shaping = random_pulse_shaping
         self.index = []
+        self.pulse_shaping_filter = pulse_shaping_filter
 
         for freq_idx, freq_name in enumerate(map(str.lower, self.modulations)):
             for idx in range(self.num_samples_per_class):
@@ -895,6 +900,7 @@ class FSKDataset(SyntheticDataset):
                     class_name=freq_name,
                     class_index=freq_idx,
                     excess_bandwidth=0,
+                    pulse_shaping_filter_name = pulse_shaping_filter.name
                 )
                 self.index.append((freq_name, freq_idx * self.num_samples_per_class + idx, [meta])
                 )
@@ -936,17 +942,24 @@ class FSKDataset(SyntheticDataset):
         symbol_nums = np.random.randint(0, len(const_oversampled), int(np.ceil((self.num_iq_samples / samples_per_symbol_recalculated) * (1/resampleRate)) ))
         # produce data symbols
         symbols = const_oversampled[symbol_nums]
-        # rectangular pulse shape
-        pulse_shape = np.ones(samples_per_symbol_recalculated)
+    
+        # if "g" not in const_name and self.pulse_shaping_filter is not None:
+        #     pulse_shape = self.pulse_shaping_filter
+        # else:
+        # # rectangular pulse shape
+        #     pulse_shape = np.ones(samples_per_symbol_recalculated)
 
         if "g" in const_name:
             # GMSK, GFSK
+            pulse_shape = np.ones(samples_per_symbol_recalculated)
             taps = gaussian_taps(samples_per_symbol_recalculated, bandwidth)
             pulse_shape = np.convolve(taps,pulse_shape)
-
+            filtered = sp.upfirdn(pulse_shape,symbols,up=samples_per_symbol_recalculated,down=1)
         # upsample symbols and apply pulse shaping
-        filtered = sp.upfirdn(pulse_shape,symbols,up=samples_per_symbol_recalculated,down=1)
-
+        # filtered = sp.upfirdn(pulse_shape,symbols,up=samples_per_symbol_recalculated,down=1)
+        # we pass in bandwidth generically
+        if 'g' not in const_name:
+            filtered = self.pulse_shaping_filter(symbols=symbols, samples_per_symbol=samples_per_symbol_recalculated, bandwith=bandwidth)
         # insert a zero at first sample to start at zero phase
         filtered = np.insert(filtered, 0, 0)
 
