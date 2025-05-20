@@ -61,7 +61,7 @@ class GaussianPulseShapeFilter(AbstractPulseShapeFilter):
 class RRCPulseShapeFilter(AbstractPulseShapeFilter):
 
     def __init__(self, name="rrc", size_in_symbols=4):
-        super().__init__()
+        super().__init__(name)
         self.name = name
         self.size_in_symbols = size_in_symbols
 
