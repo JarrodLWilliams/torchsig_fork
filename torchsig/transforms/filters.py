@@ -58,4 +58,16 @@ class GaussianPulseShapeFilter(AbstractPulseShapeFilter):
             pulse_shape = np.convolve(taps,pulse_shape)
             return sp.upfirdn(pulse_shape,symbols,up=samples_per_symbol,down=1)
 
+class RRCPulseShapeFilter(AbstractPulseShapeFilter):
+
+    def __init__(self, name="rrc"):
+        super().__init__()
+        self.name = name
+
+    def __call__(self, symbols: Any, samples_per_symbol: int, bandwidth: float) -> Any:
+        pulse_shape = np.ones(samples_per_symbol)
+        taps = rrc_taps(samples_per_symbol, bandwidth)
+        pulse_shape = np.convolve(taps,pulse_shape)
+        return sp.upfirdn(pulse_shape,symbols,up=samples_per_symbol,down=1)
+
     
