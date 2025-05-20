@@ -16,6 +16,12 @@ class PulseShapingValConfig(PulseShapingTrainConfig):
     num_samples: int = 2e4
 
 @dataclass
+class PulseShapingTestConfig(PulseShapingTrainConfig):
+    name: str = 'clean_pulse_test'
+    seed: int = 124695783
+    num_samples: int = 1e4
+
+@dataclass
 class PulseShapingTrainQAConfig(PulseShapingTrainConfig):
     num_samples = 100
 
