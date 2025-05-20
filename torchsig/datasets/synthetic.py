@@ -199,7 +199,7 @@ class DigitalModulationDataset(ConcatDataset):
             num_iq_samples=num_iq_samples,
             num_samples_per_class=num_samples_per_class,
             iq_samples_per_symbol=8,
-            pulse_shaping_filter=pulse_shaping_filter
+            pulse_shaping_filter=pulse_shaping_filter,
             **kwargs,
         )
         gfsks_dataset = FSKDataset(
@@ -209,7 +209,7 @@ class DigitalModulationDataset(ConcatDataset):
             iq_samples_per_symbol=8,
             random_data=random_data,
             random_pulse_shaping=random_pulse_shaping,
-            pulse_shaping_filter=pulse_shaping_filter
+            pulse_shaping_filter=pulse_shaping_filter,
             **kwargs,
         )
         super(DigitalModulationDataset, self).__init__([const_dataset, fsk_dataset, gfsks_dataset])
