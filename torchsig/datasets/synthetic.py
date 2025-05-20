@@ -900,7 +900,7 @@ class FSKDataset(SyntheticDataset):
                     class_name=freq_name,
                     class_index=freq_idx,
                     excess_bandwidth=0,
-                    pulse_shaping_filter_name = pulse_shaping_filter.name
+                    # pulse_shaping_filter_name = pulse_shaping_filter.name
                 )
                 self.index.append((freq_name, freq_idx * self.num_samples_per_class + idx, [meta])
                 )
