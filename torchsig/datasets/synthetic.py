@@ -958,10 +958,18 @@ class FSKDataset(SyntheticDataset):
         # upsample symbols and apply pulse shaping
         # filtered = sp.upfirdn(pulse_shape,symbols,up=samples_per_symbol_recalculated,down=1)
         # we pass in bandwidth generically
+        
         if 'g' not in const_name:
-            # breakpoint()
-            # filtered = self.pulse_shaping_filter(symbols=symbols, samples_per_symbol=samples_per_symbol_recalculated, bandwith=bandwidth)
-            filtered = self.pulse_shaping_filter(symbols, samples_per_symbol_recalculated, bandwidth)
+            if self.pulse_shaping_filter is not None:
+                # breakpoint()
+                # filtered = self.pulse_shaping_filter(symbols=symbols, samples_per_symbol=samples_per_symbol_recalculated, bandwith=bandwidth)
+                filtered = self.pulse_shaping_filter(symbols, samples_per_symbol_recalculated, bandwidth)
+
+            else:
+                pulse_shape = np.ones(samples_per_symbol_recalculated)
+                filtered = sp.upfirdn(pulse_shape,symbols,up=samples_per_symbol_recalculated,down=1)
+
+
         # insert a zero at first sample to start at zero phase
         filtered = np.insert(filtered, 0, 0)
 
