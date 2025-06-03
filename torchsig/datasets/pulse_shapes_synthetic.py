@@ -228,7 +228,7 @@ class FSKDigitalModulationDataset(ConcatDataset):
                                 **kwargs,
                                 )
                             )
-                    case 'gaussian':
+                    case 'Gaussian':
                         gaussian_filter = GaussianPulseShapeFilter(bandwidth_mode='fixed', bandwidth=filter_params[0])
                         filter_datasets.append(FSKDataset(
                                 modulations=fsks,
@@ -240,7 +240,7 @@ class FSKDigitalModulationDataset(ConcatDataset):
                                 **kwargs,
                                 )
                         )
-                    case 'rectangular':
+                    case 'Rectangular':
                         rect_filter = RectangularPulseShapeFilter(bandwidth_mode='fixed', bandwidth=filter_params[0])
                         filter_datasets.append(FSKDataset(
                                 modulations=fsks,
