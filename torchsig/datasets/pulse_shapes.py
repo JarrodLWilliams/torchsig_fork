@@ -238,11 +238,19 @@ class FSKPulseShapesDataset(ConcatDataset):
         return super().__getitem__(item)
 
 if __name__ == '__main__':
-    data = FSKPulseShapesDataset(classes=['2fsk'],
+    # data = FSKPulseShapesDataset(classes=['2fsk'],
+    #                        use_class_idx=True,
+    #                        num_iq_samples=4096,
+    #                        pulse_shaping_filter_dict={'rrc':[0.1,0.2]},
+    #                        num_samples=100,
+    #                        target_transform=lambda x:[y['excess_bandwidth'] for y in x])
+
+    # print(data[0], data[90])
+    data_mixed = FSKPulseShapesDataset(classes=['2fsk'],
                            use_class_idx=True,
                            num_iq_samples=4096,
-                           pulse_shaping_filter_dict={'rrc':[0.1,0.2]},
+                           pulse_shaping_filter_dict={'rrc': [0.1], 'Gaussian': [0.35], 'Rectangular': [0.5]},
                            num_samples=100,
-                           target_transform=lambda x:[y['excess_bandwidth'] for y in x])
-
-    print(data[0], data[90])
+                           target_transform=lambda x:[y['pulse_shaping_filter_name'] for y in x])
+    print(list(data_mixed[i] for i in range(0,99,33)))
+ 
