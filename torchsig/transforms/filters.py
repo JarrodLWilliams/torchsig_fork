@@ -74,8 +74,8 @@ class AbstractCompositePulseShapeFilter:
     
 class RectangularPulseShapeFilter(AbstractPulseShapeFilter):
 
-    def __init__(self, name='Rectangular'):
-        super().__init__()
+    def __init__(self, name='Rectangular', bandwidth_mode='variable', bandwidth=None):
+        super().__init__(name, bandwidth_mode, bandwidth)
         self.name = name
         
 
@@ -94,9 +94,10 @@ class RectangularPulseShapeFilter(AbstractPulseShapeFilter):
     
 class GaussianPulseShapeFilter(AbstractPulseShapeFilter):
 
-    def __init__(self, name='Gaussian'):
-        super().__init__()
+    def __init__(self, name='Gaussian', bandwidth_mode='variable', bandwidth=None):
+        super().__init__(name=name, bandwidth_mode=bandwidth_mode, bandwidth=bandwidth)
         self.name = name
+        
 
     def __call__(self, symbols: Any, samples_per_symbol: int, bandwidth: float) -> Any:
             pulse_shape = np.ones(samples_per_symbol)
