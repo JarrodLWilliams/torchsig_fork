@@ -16,6 +16,7 @@ from torchsig.transforms import (
     RandomTimeShift,
     RayleighFadingChannel,
     TargetSNR,
+    ComplexTo2D
 )
 from torchsig.transforms.target_transforms import (
     DescToClassIndex,
@@ -99,6 +100,7 @@ class FSKPulseShapesDataset(ConcatDataset):
         use_class_idx: bool = False,
         level: int = 0,
         num_iq_samples: int = 2048,
+        iq_samples_per_symbol: int = 2,
         num_samples: int = 4500,
         include_snr: bool = False,
         eb_no: bool = False,
@@ -201,7 +203,7 @@ class FSKPulseShapesDataset(ConcatDataset):
                 modulations=digital_classes,  # effectively uses all modulations
                 num_iq_samples=num_iq_samples,
                 num_samples_per_class=num_samples_per_class,
-                iq_samples_per_symbol=2,
+                iq_samples_per_symbol=iq_samples_per_symbol,
                 random_data=True,
                 random_pulse_shaping=random_pulse_shaping,
                 transform=internal_transforms,
@@ -213,7 +215,7 @@ class FSKPulseShapesDataset(ConcatDataset):
                 modulations=custom_classes,  # custom classes
                 num_iq_samples=num_iq_samples,
                 num_samples_per_class=num_samples_per_class,
-                iq_samples_per_symbol=2,
+                iq_samples_per_symbol=iq_samples_per_symbol,
                 random_data=True,
                 random_pulse_shaping=random_pulse_shaping,
                 transform=internal_transforms,
@@ -238,19 +240,53 @@ class FSKPulseShapesDataset(ConcatDataset):
         return super().__getitem__(item)
 
 if __name__ == '__main__':
-    # data = FSKPulseShapesDataset(classes=['2fsk'],
-    #                        use_class_idx=True,
-    #                        num_iq_samples=4096,
-    #                        pulse_shaping_filter_dict={'rrc':[0.1,0.2]},
-    #                        num_samples=100,
-    #                        target_transform=lambda x:[y['excess_bandwidth'] for y in x])
-
-    # print(data[0], data[90])
-    data_mixed = FSKPulseShapesDataset(classes=['2fsk'],
+    from torchsig.transforms import Spectrogram
+    from matplotlib import pyplot as plt
+    transform = Compose([TargetSNR((100, 100)), Normalize(norm=np.inf), Spectrogram(nperseg=512, noverlap=256)])
+                         
+                        #  Spectrogram(nperseg=512, noverlap=256)])
+    data = FSKPulseShapesDataset(classes=['4fsk'],
                            use_class_idx=True,
                            num_iq_samples=4096,
-                           pulse_shaping_filter_dict={'rrc': [0.1], 'Gaussian': [0.35], 'Rectangular': [0.5]},
-                           num_samples=100,
-                           target_transform=lambda x:[y['pulse_shaping_filter_name'] for y in x])
-    print(list(data_mixed[i] for i in range(0,99,33)))
+                           iq_samples_per_symbol=2,
+                           pulse_shaping_filter_dict={'rrc':[0.1,1.0]},
+                           num_samples=10,
+                           transform=transform,
+                           target_transform=lambda x:[y['excess_bandwidth'] for y in x])
+    print(data[0])
+
+    fig, ax = plt.subplots(5,2, layout='constrained')
+    ax = ax.ravel()
+
+    # d1, l1 = data[0]
+    # breakpoint()
+    # d1 = d1[int(0.45*d1.shape[0]):int(0.55*d1.shape[0])]
+    # plt.imshow(d1)
+    # plt.show()
+    from matplotlib.colors import LogNorm
+    for i in range(10):
+        spec, label = data[i]
+        # spec = spec[int(0.45*spec.shape[0]):int(0.55*spec.shape[0])]
+        ax[i].imshow(spec, norm='log')
+        ax[i].set_aspect(1.0/ax[i].get_data_ratio(), adjustable='box')
+        ax[i].set_title(str(label[0]))
+    plt.show()
+
+    # for i in range(10):
+    #     spec, label = data[i]
+    #     fft_norm = np.abs(np.fft.fft(spec))
+    #     # MIN_NORM = 0
+    #     # filtered_norm = fft_norm[fft_norm > MIN_NORM]
+    #     ax[i].plot(fft_norm)
+    #     ax[i].set_title(str(label[0]))
+    # plt.show()
+
+    # print(data[0], data[90])
+    # data_mixed = FSKPulseShapesDataset(classes=['2fsk'],
+    #                        use_class_idx=True,
+    #                        num_iq_samples=4096,
+    #                        pulse_shaping_filter_dict={'rrc': [0.1], 'Gaussian': [0.35], 'Rectangular': [0.5]},
+    #                        num_samples=100,
+    #                        target_transform=lambda x:[y['pulse_shaping_filter_name'] for y in x])
+    # print(list(data_mixed[i] for i in range(0,99,33)))
  

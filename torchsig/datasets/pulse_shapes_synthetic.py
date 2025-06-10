@@ -223,7 +223,7 @@ class FSKDigitalModulationDataset(ConcatDataset):
                                 num_iq_samples=num_iq_samples,
                                 num_samples_per_class=num_samples_per_filter,
                                 # num_samples_per_class= num_samples_per_class,
-                                iq_samples_per_symbol=8,
+                                iq_samples_per_symbol=iq_samples_per_symbol,
                                 pulse_shaping_filter=rrc_filter,
                                 **kwargs,
                                 )
@@ -235,7 +235,7 @@ class FSKDigitalModulationDataset(ConcatDataset):
                                 num_iq_samples=num_iq_samples,
                                 # num_samples_per_class=num_samples_per_class,
                                 num_samples_per_class=num_samples_per_filter,
-                                iq_samples_per_symbol=8,
+                                iq_samples_per_symbol=iq_samples_per_symbol,
                                 pulse_shaping_filter=gaussian_filter,
                                 **kwargs,
                                 )
@@ -247,7 +247,7 @@ class FSKDigitalModulationDataset(ConcatDataset):
                                 num_iq_samples=num_iq_samples,
                                 # num_samples_per_class=num_samples_per_class,
                                 num_samples_per_class=num_samples_per_filter,
-                                iq_samples_per_symbol=8,
+                                iq_samples_per_symbol=iq_samples_per_symbol,
                                 pulse_shaping_filter=rect_filter,
                                 **kwargs,
                                 )
