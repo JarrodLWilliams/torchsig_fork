@@ -163,6 +163,7 @@ class DigitalModulationDataset(ConcatDataset):
         random_data: bool = False,
         random_pulse_shaping: bool = False,
         user_const_map: Optional[OrderedDict] = None,
+        sample_sequences: np.random.SeedSequence= None,
         **kwargs,
     ) -> None:
         const_map = user_const_map if user_const_map else default_const_map
@@ -215,6 +216,7 @@ class SyntheticDataset(SignalDataset):
     def __init__(self, **kwargs) -> None:
         super(SyntheticDataset, self).__init__(**kwargs)
         self.index: List[Tuple[Any, ...]] = []
+        self.sample_sequences = kwargs.pop("sample_sequences", None)
 
     def __getitem__(self, index: int) -> Tuple[Union[SignalData, np.ndarray], Any]:
         signal_meta = self.index[index][-1]
@@ -292,6 +294,7 @@ class ConstellationDataset(SyntheticDataset):
         self.iq_samples_per_symbol = iq_samples_per_symbol
         self.num_samples_per_class = num_samples_per_class
         self.random_pulse_shaping = random_pulse_shaping
+        
 
         num_constellations = len(self.constellations)
         total_num_samples = int(num_constellations * self.num_samples_per_class)
@@ -336,12 +339,14 @@ class ConstellationDataset(SyntheticDataset):
         center_freq = meta["center_freq"]
         bandwidth = 1/self.iq_samples_per_symbol
 
-        orig_state = np.random.get_state()
-        if not self.random_data:
-            np.random.seed(index)
+        if not self.random_data and self.sample_sequences is not None:
+            sample_sequence = self.sample_sequences[index]
+            rng = np.random.default_rng(sample_sequence)
+        else:
+            rng = np.random.default_rng()
 
         const = self.const_map[class_name] / np.mean(np.abs(self.const_map[class_name]))
-        symbol_nums = np.random.randint(0, len(const), int(self.num_iq_samples / self.iq_samples_per_symbol))
+        symbol_nums = rng.integers(0, len(const), int(self.num_iq_samples / self.iq_samples_per_symbol))
         symbols = const[symbol_nums]
         zero_padded = np.zeros((self.iq_samples_per_symbol * len(symbols),), dtype=np.complex64)
         zero_padded[::self.iq_samples_per_symbol] = symbols
@@ -374,8 +379,8 @@ class ConstellationDataset(SyntheticDataset):
             # is overlapping the -fs/2 or +fs/2 boundary to minimize aliasing
             filtered = upconversionAntiAliasingFilter ( filtered, center_freq, bandwidth )
 
-        if not self.random_data:
-            np.random.set_state(orig_state)  # return numpy back to its previous state
+        # if not self.random_data:
+        #     np.random.set_state(orig_state)  # return numpy back to its previous state
 
         return filtered[0:self.num_iq_samples]     #[-self.num_iq_samples :]
 
@@ -556,13 +561,16 @@ class OFDMDataset(SyntheticDataset):
         center_freq = meta["center_freq"]
         bandwidth = meta["bandwidth"]
 
-        orig_state = np.random.get_state()
-        if not self.random_data:
-            np.random.seed(index)
+        if not self.random_data and self.sample_sequences is not None:
+            sample_sequence = self.sample_sequences[index]
+            rng = np.random.default_rng(sample_sequence)
+        else:
+            rng = np.random.default_rng()
+
 
         if mod_type == "random":
-            symbols_idxs = np.random.randint(0, 1024, size=self.num_iq_samples)
-            const_idxes = np.random.choice(
+            symbols_idxs = rng.integers(0, 1024, size=self.num_iq_samples)
+            const_idxes = rng.choice(
                 range(len(self.random_symbols)), size=num_subcarriers
             )
             symbols = np.zeros(self.num_iq_samples, dtype=np.complex128)
@@ -577,11 +585,11 @@ class OFDMDataset(SyntheticDataset):
                 ]
         else:
             # Fixed modulation across all subcarriers
-            const_name = np.random.choice(self.constellations)
+            const_name = rng.choice(self.constellations)
             const = default_const_map[const_name] / np.mean(
                 np.abs(default_const_map[const_name])
             )
-            symbol_nums = np.random.randint(0, len(const), int(self.num_iq_samples))
+            symbol_nums = rng.integers(0, len(const), int(self.num_iq_samples))
             symbols = const[symbol_nums]
         divisible_index = -(len(symbols) % num_subcarriers)
         if divisible_index != 0:
@@ -613,7 +621,7 @@ class OFDMDataset(SyntheticDataset):
                 burst_region_start = 0.0
                 burst_region_stop = zero_pad.shape[1]
             else:
-                burst_region_start = np.random.uniform(0.0, 0.9)
+                burst_region_start = rng.uniform(0.0, 0.9)
                 burst_region_dur = min(1.0 - burst_region_start, np.random.uniform(0.25, 1.0))
                 burst_region_start = int(burst_region_start * zero_pad.shape[1] // 4)
                 burst_region_dur = int(burst_region_dur * zero_pad.shape[1] // 4)
@@ -623,8 +631,8 @@ class OFDMDataset(SyntheticDataset):
                 pickle.dumps(zero_pad, -1)
             )  # no random hangs like deepcopy
 
-            burst_dur = np.random.choice([1, 2, 4])
-            original_on = True if np.random.rand() <= 0.5 else False
+            burst_dur = rng.choice([1, 2, 4])
+            original_on = True if rng.rand() <= 0.5 else False
             for subcarrier_idx in range(bursty.shape[0]):
                 on = original_on
                 for time_idx in range(bursty.shape[1]):
@@ -638,8 +646,8 @@ class OFDMDataset(SyntheticDataset):
             # Pilots
             min_num_pilots = 4
             max_num_pilots = int(num_subcarriers // 8)
-            num_pilots = np.random.randint(min_num_pilots, max_num_pilots)
-            pilot_indices = np.random.choice(
+            num_pilots = rng.integers(min_num_pilots, max_num_pilots)
+            pilot_indices = rng.choice(
                 range(num_subcarriers), num_pilots, replace=False
             )
             bursty[pilot_indices + num_subcarriers // 2, :] = zero_pad[pilot_indices + num_subcarriers // 2, :]
@@ -647,7 +655,7 @@ class OFDMDataset(SyntheticDataset):
             # Resource blocks
             min_num_blocks = 2
             max_num_blocks = 16
-            num_blocks = np.random.randint(min_num_blocks, max_num_blocks)
+            num_blocks = rng.integers(min_num_blocks, max_num_blocks)
             for _ in range(num_blocks):
                 block_start = np.random.uniform(0.0, 0.9)
                 block_dur = np.random.uniform(0.05, 1.0 - block_start)
@@ -655,8 +663,8 @@ class OFDMDataset(SyntheticDataset):
                 block_dur = int(block_dur * zero_pad.shape[1] // 4)
                 block_stop = block_start + block_dur
 
-                block_low_carrier = np.random.randint(0, num_subcarriers - 4)
-                block_num_carriers = np.random.randint(1, num_subcarriers // 8)
+                block_low_carrier = rng.integers(0, num_subcarriers - 4)
+                block_num_carriers = rng.integers(1, num_subcarriers // 8)
                 block_high_carrier = min(block_low_carrier + block_num_carriers, num_subcarriers)
 
                 bursty[
@@ -687,7 +695,7 @@ class OFDMDataset(SyntheticDataset):
         elif sidelobe_suppression_method == "rand_lpf":
             flattened = cyclic_prefixed.T.flatten()
             # Generate randomized LPF
-            cutoff = np.random.uniform(0.25, 0.475)
+            cutoff = rng.uniform(0.25, 0.475)
             taps = low_pass(cutoff=cutoff, transition_bandwidth=(0.5 - cutoff) / 4)
             # Apply random LPF
             output = convolve(flattened, taps) #[: -len(taps)]
@@ -760,14 +768,14 @@ class OFDMDataset(SyntheticDataset):
 
         # Randomize the start index (while bypassing the initial windowing if present)
         if num_subcarriers * 4 * burst_dur < self.num_iq_samples:
-            start_idx = np.random.randint(0, output.shape[0] - self.num_iq_samples)
+            start_idx = rng.integers(0, output.shape[0] - self.num_iq_samples)
         else:
             if "win" in sidelobe_suppression_method:
-                start_idx = np.random.randint(
+                start_idx = rng.integers(
                     window_len, int(symbol_dur * burst_dur) + window_len
                 )
             else:
-                start_idx = np.random.randint(0, int(symbol_dur * burst_dur))
+                start_idx = rng.integers(0, int(symbol_dur * burst_dur))
             # if original_on:
             #     lower: int = int(
             #         max(0, int(symbol_dur * burst_dur) - self.num_iq_samples * 0.7)
@@ -811,8 +819,8 @@ class OFDMDataset(SyntheticDataset):
             # is overlapping the -fs/2 or +fs/2 boundary to minimize aliasing
             output = upconversionAntiAliasingFilter ( output, center_freq, bandwidth )
 
-        if not self.random_data:
-            np.random.set_state(orig_state)  # return numpy back to its previous state
+        # if not self.random_data:
+        #     np.random.set_state(orig_state)  # return numpy back to its previous state
 
         return output[0:self.num_iq_samples]
 
@@ -921,9 +929,12 @@ class FSKDataset(SyntheticDataset):
         # are packed tighter around f=0 the larger the oversampling rate
         const_oversampled = const / oversampling_rate
 
-        orig_state = np.random.get_state()
-        if not self.random_data:
-            np.random.seed(index)
+        if not self.random_data and self.sample_sequences is not None:
+            sample_sequence = self.sample_sequences[index]
+            rng = np.random.default_rng(sample_sequence)
+        else:
+            rng = np.random.default_rng()
+
 
         # get the modulation index
         mod_idx = self._mod_index(const_name)
@@ -933,7 +944,7 @@ class FSKDataset(SyntheticDataset):
         resampleRate = bandwidth*mod_idx/(1/oversampling_rate)
 
         # calculate the indexes into symbol table
-        symbol_nums = np.random.randint(0, len(const_oversampled), int(np.ceil((self.num_iq_samples / samples_per_symbol_recalculated) * (1/resampleRate)) ))
+        symbol_nums = rng.integers(0, len(const_oversampled), int(np.ceil((self.num_iq_samples / samples_per_symbol_recalculated) * (1/resampleRate)) ))
         # produce data symbols
         symbols = const_oversampled[symbol_nums]
         # rectangular pulse shape
@@ -978,8 +989,8 @@ class FSKDataset(SyntheticDataset):
             # is overlapping the -fs/2 or +fs/2 boundary to minimize aliasing
             modulated = upconversionAntiAliasingFilter ( modulated, center_freq, bandwidth )
 
-        if not self.random_data:
-            np.random.set_state(orig_state)  # return numpy back to its previous state
+        # if not self.random_data:
+        #     np.random.set_state(orig_state)  # return numpy back to its previous state
 
         return modulated[:self.num_iq_samples]
 
@@ -1014,11 +1025,13 @@ class AMDataset(SyntheticDataset):
         **kwargs,
     ):
         super(AMDataset, self).__init__(**kwargs)
+       
         self.num_iq_samples = num_iq_samples
         self.num_samples_per_class = num_samples_per_class
         self.classes = ["am", "am-ssb", "am-dsb"]
         self.random_data = random_data
         self.index = []
+        
 
         for class_idx, class_name in enumerate(self.classes):
             meta = ModulatedRFMetadata(
@@ -1054,9 +1067,13 @@ class AMDataset(SyntheticDataset):
     def _generate_samples(self, item: Tuple) -> np.ndarray:
         const_name = item[0]
         index = item[1]
-        orig_state = np.random.get_state()
-        if not self.random_data:
-            np.random.seed(index)
+
+        if not self.random_data and self.sample_sequences is not None:
+            sample_sequence = self.sample_sequences[index]
+            rng = np.random.default_rng(sample_sequence)
+        else:
+            rng = np.random.default_rng()
+
 
         source = np.random.randn(self.num_iq_samples) + 0j
         taps = sp.firwin(
@@ -1073,8 +1090,8 @@ class AMDataset(SyntheticDataset):
         filtered *= np.ones_like(filtered) if "ssb" not in const_name else sinusoid
         filtered += 5 if const_name == "am" else 0
 
-        if not self.random_data:
-            np.random.set_state(orig_state)  # return numpy back to its previous state
+        # if not self.random_data:
+        #     np.random.set_state(orig_state)  # return numpy back to its previous state
 
         return filtered
 
@@ -1137,15 +1154,18 @@ class FMDataset(SyntheticDataset):
         # class_name = item[0]
         index = item[1]
         meta = item[2]
-        orig_state = np.random.get_state()
-        if not self.random_data:
-            np.random.seed(index)
 
-        source = np.random.randn(self.num_iq_samples) + 0j
+        if not self.random_data and self.sample_sequences is not None:
+            sample_sequence = self.sample_sequences[index]
+            rng = np.random.default_rng(sample_sequence)
+        else:
+            rng = np.random.default_rng()
+
+        source = rng.standard_normal(self.num_iq_samples) + 0j
         modulated = np.exp(1j * np.pi / 2 * np.cumsum(source) / 2.0)
 
-        if not self.random_data:
-            np.random.set_state(orig_state)  # return numpy back to its previous state
+        # if not self.random_data:
+        #     np.random.set_state(orig_state)  # return numpy back to its previous state
 
         return modulated[-self.num_iq_samples :], meta
 
