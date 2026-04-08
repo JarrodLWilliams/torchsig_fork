@@ -166,6 +166,9 @@ class DigitalModulationDataset(ConcatDataset):
         sample_sequences: np.random.SeedSequence= None,
         **kwargs,
     ) -> None:
+        if sample_sequences is None:
+            sample_sequences = np.random.SeedSequence()
+        root_seeds = sample_sequences.spawn(3)
         const_map = user_const_map if user_const_map else default_const_map
         modulations = (
             list(const_map.keys()) + list(freq_map.keys())
@@ -183,6 +186,7 @@ class DigitalModulationDataset(ConcatDataset):
             else iq_samples_per_symbol,
             random_data=random_data,
             random_pulse_shaping=random_pulse_shaping,
+            sample_sequences=root_seeds[0],
             **kwargs,
         )
 
@@ -199,6 +203,7 @@ class DigitalModulationDataset(ConcatDataset):
             num_iq_samples=num_iq_samples,
             num_samples_per_class=num_samples_per_class,
             iq_samples_per_symbol=8,
+            sample_sequences=root_seeds[1],
             **kwargs,
         )
         gfsks_dataset = FSKDataset(
@@ -208,6 +213,7 @@ class DigitalModulationDataset(ConcatDataset):
             iq_samples_per_symbol=8,
             random_data=random_data,
             random_pulse_shaping=random_pulse_shaping,
+            sample_sequences=root_seeds[2],
             **kwargs,
         )
         super(DigitalModulationDataset, self).__init__([const_dataset, fsk_dataset, gfsks_dataset])
@@ -216,7 +222,12 @@ class SyntheticDataset(SignalDataset):
     def __init__(self, **kwargs) -> None:
         super(SyntheticDataset, self).__init__(**kwargs)
         self.index: List[Tuple[Any, ...]] = []
-        self.sample_sequences = kwargs.pop("sample_sequences", None)
+        seq = kwargs.pop("sample_sequences", None)
+        if seq is not None:
+            # .entropy is typically a 32-bit integer array
+            self.base_entropy = seq.entropy 
+        else:
+            self.base_entropy = None
 
     def __getitem__(self, index: int) -> Tuple[Union[SignalData, np.ndarray], Any]:
         signal_meta = self.index[index][-1]
@@ -339,9 +350,9 @@ class ConstellationDataset(SyntheticDataset):
         center_freq = meta["center_freq"]
         bandwidth = 1/self.iq_samples_per_symbol
 
-        if not self.random_data and self.sample_sequences is not None:
-            sample_sequence = self.sample_sequences[index]
-            rng = np.random.default_rng(sample_sequence)
+        if not self.random_data and self.base_entropy is not None:
+            # we combine the base entropy with the sample index; default_rng hashes these to ensure streams are independent for different indexes.
+            rng = np.random.default_rng([self.base_entropy, index])
         else:
             rng = np.random.default_rng()
 
@@ -469,6 +480,9 @@ class OFDMDataset(SyntheticDataset):
         **kwargs,
     ):
         super(OFDMDataset, self).__init__(**kwargs)
+        # create init_rng to seed data generation
+        init_rng = np.random.default_rng(self.base_entropy)
+
         self.constellations = constellations
         self.num_iq_samples = num_iq_samples
         self.num_samples_per_class = num_samples_per_class
@@ -503,10 +517,13 @@ class OFDMDataset(SyntheticDataset):
                 time_varying_realism,
             )
         )
+        
 
         for class_idx, num_subcarrier in enumerate(num_subcarriers):
             class_name = "ofdm-{}".format(num_subcarrier)
             for idx in range(self.num_samples_per_class):
+                # use the init_rng to choose random idx
+                idx_choice = init_rng.integers(len(combinations))
                 (
                     const_name,
                     mod_type,
@@ -514,7 +531,7 @@ class OFDMDataset(SyntheticDataset):
                     sidelobe_suppression_method,
                     dc_subcarrier,
                     time_varying_realism,
-                ) = combinations[np.random.randint(len(combinations))]
+                ) = combinations[idx_choice] # using init_rng not np.random
                 meta = ModulatedRFMetadata(
                     sample_rate=0.0,
                     num_samples=self.num_iq_samples,
@@ -561,12 +578,10 @@ class OFDMDataset(SyntheticDataset):
         center_freq = meta["center_freq"]
         bandwidth = meta["bandwidth"]
 
-        if not self.random_data and self.sample_sequences is not None:
-            sample_sequence = self.sample_sequences[index]
-            rng = np.random.default_rng(sample_sequence)
+        if not self.random_data and self.base_entropy is not None:
+            rng = np.random.default_rng([self.base_entropy, index])
         else:
             rng = np.random.default_rng()
-
 
         if mod_type == "random":
             symbols_idxs = rng.integers(0, 1024, size=self.num_iq_samples)
@@ -632,7 +647,7 @@ class OFDMDataset(SyntheticDataset):
             )  # no random hangs like deepcopy
 
             burst_dur = rng.choice([1, 2, 4])
-            original_on = True if rng.rand() <= 0.5 else False
+            original_on = True if rng.random() <= 0.5 else False
             for subcarrier_idx in range(bursty.shape[0]):
                 on = original_on
                 for time_idx in range(bursty.shape[1]):
@@ -929,12 +944,10 @@ class FSKDataset(SyntheticDataset):
         # are packed tighter around f=0 the larger the oversampling rate
         const_oversampled = const / oversampling_rate
 
-        if not self.random_data and self.sample_sequences is not None:
-            sample_sequence = self.sample_sequences[index]
-            rng = np.random.default_rng(sample_sequence)
+        if not self.random_data and self.base_entropy is not None:
+            rng = np.random.default_rng([self.base_entropy, index])
         else:
             rng = np.random.default_rng()
-
 
         # get the modulation index
         mod_idx = self._mod_index(const_name)
@@ -1068,14 +1081,12 @@ class AMDataset(SyntheticDataset):
         const_name = item[0]
         index = item[1]
 
-        if not self.random_data and self.sample_sequences is not None:
-            sample_sequence = self.sample_sequences[index]
-            rng = np.random.default_rng(sample_sequence)
+        if not self.random_data and self.base_entropy is not None:
+            rng = np.random.default_rng([self.base_entropy, index])
         else:
             rng = np.random.default_rng()
 
-
-        source = np.random.randn(self.num_iq_samples) + 0j
+        source = rng.standard_normal(self.num_iq_samples) + 0j
         taps = sp.firwin(
             100,  # num taps
             0.5 if "ssb" not in const_name else 0.25,
@@ -1155,9 +1166,9 @@ class FMDataset(SyntheticDataset):
         index = item[1]
         meta = item[2]
 
-        if not self.random_data and self.sample_sequences is not None:
-            sample_sequence = self.sample_sequences[index]
-            rng = np.random.default_rng(sample_sequence)
+
+        if not self.random_data and self.base_entropy is not None:
+            rng = np.random.default_rng([self.base_entropy, index])
         else:
             rng = np.random.default_rng()
 

@@ -148,8 +148,12 @@ class ModulationsDataset(ConcatDataset):
         eb_no: bool = False,
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
+        sample_sequences: np.random.SeedSequence =  None,
         **kwargs,
     ) -> None:
+        
+        # handle seeding; different seed for digital dataset and ofdm dataset
+        self.sample_sequences = sample_sequences.spawn(2)
         classes = self.default_classes if classes is None else classes
         # Set the target transform based on input options if none provided
         if not target_transform:
@@ -236,6 +240,7 @@ class ModulationsDataset(ConcatDataset):
                 random_pulse_shaping=random_pulse_shaping,
                 transform=internal_transforms,
                 target_transform=target_transform,
+                sample_sequences=self.sample_sequences,
             )
 
         if num_ofdm > 0:
@@ -257,6 +262,7 @@ class ModulationsDataset(ConcatDataset):
                 dc_subcarrier=("on", "off"),
                 transform=internal_transforms,
                 target_transform=target_transform,
+                sample_sequences = self.sample_sequences
             )
 
         if num_digital > 0 and num_ofdm > 0:
