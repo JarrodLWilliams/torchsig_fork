@@ -220,9 +220,10 @@ class DigitalModulationDataset(ConcatDataset):
 
 class SyntheticDataset(SignalDataset):
     def __init__(self, **kwargs) -> None:
+        seq = kwargs.pop("sample_sequences", None)
         super(SyntheticDataset, self).__init__(**kwargs)
         self.index: List[Tuple[Any, ...]] = []
-        seq = kwargs.pop("sample_sequences", None)
+        
         if seq is not None:
             # .entropy is typically a 32-bit integer array
             self.base_entropy = seq.entropy 
@@ -233,7 +234,10 @@ class SyntheticDataset(SignalDataset):
         signal_meta = self.index[index][-1]
         signal_data = SignalData(samples=self._generate_samples(self.index[index]))
         signal = Signal(data=signal_data, metadata=signal_meta)
-
+        # handle transform randomness
+        if self.base_entropy is not None:
+            seed = int(np.sum(self.base_entropy) + index) % (2**32)
+            np.random.seed(seed)
         if self.transform:
             signal = self.transform(signal)
 
