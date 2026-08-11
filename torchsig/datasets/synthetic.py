@@ -226,7 +226,9 @@ class SyntheticDataset(SignalDataset):
         
         if seq is not None:
             # .entropy is typically a 32-bit integer array
-            self.base_entropy = seq.entropy 
+            # self.base_entropy = seq.entropy 
+            # Child sequences are spawned from the base sequence, and each child sequence has its own entropy value. We can use the first child sequence's entropy as a base for generating random numbers in a reproducible way. Using generate_state instead of seq.entropy helps maintain statistical independence between different child sequences, while still maintaining control at the parent class level.
+            self.base_entropy = seq.generate_state(1)[0]
         else:
             self.base_entropy = None
 
