@@ -234,10 +234,7 @@ class SyntheticDataset(SignalDataset):
         signal_meta = self.index[index][-1]
         signal_data = SignalData(samples=self._generate_samples(self.index[index]))
         signal = Signal(data=signal_data, metadata=signal_meta)
-        # handle transform randomness
-        if self.base_entropy is not None:
-            seed = int(np.sum(self.base_entropy) + index) % (2**32)
-            np.random.seed(seed)
+      
         if self.transform:
             signal = self.transform(signal)
 
@@ -485,7 +482,11 @@ class OFDMDataset(SyntheticDataset):
     ):
         super(OFDMDataset, self).__init__(**kwargs)
         # create init_rng to seed data generation
-        init_rng = np.random.default_rng(self.base_entropy)
+        if self.base_entropy is not None:
+            init_rng = np.random.default_rng([self.base_entropy])
+        else:
+            init_rng = np.random.default_rng()
+        
 
         self.constellations = constellations
         self.num_iq_samples = num_iq_samples
@@ -641,7 +642,7 @@ class OFDMDataset(SyntheticDataset):
                 burst_region_stop = zero_pad.shape[1]
             else:
                 burst_region_start = rng.uniform(0.0, 0.9)
-                burst_region_dur = min(1.0 - burst_region_start, np.random.uniform(0.25, 1.0))
+                burst_region_dur = min(1.0 - burst_region_start, rng.uniform(0.25, 1.0))
                 burst_region_start = int(burst_region_start * zero_pad.shape[1] // 4)
                 burst_region_dur = int(burst_region_dur * zero_pad.shape[1] // 4)
                 burst_region_stop = burst_region_start + burst_region_dur
@@ -676,8 +677,8 @@ class OFDMDataset(SyntheticDataset):
             max_num_blocks = 16
             num_blocks = rng.integers(min_num_blocks, max_num_blocks)
             for _ in range(num_blocks):
-                block_start = np.random.uniform(0.0, 0.9)
-                block_dur = np.random.uniform(0.05, 1.0 - block_start)
+                block_start = rng.uniform(0.0, 0.9)
+                block_dur = rng.uniform(0.05, 1.0 - block_start)
                 block_start = int(block_start * zero_pad.shape[1])
                 block_dur = int(block_dur * zero_pad.shape[1] // 4)
                 block_stop = block_start + block_dur
