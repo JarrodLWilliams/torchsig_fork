@@ -353,9 +353,11 @@ class ConstellationDataset(SyntheticDataset):
         center_freq = meta["center_freq"]
         bandwidth = 1/self.iq_samples_per_symbol
 
-        if not self.random_data and self.base_entropy is not None:
+        if not self.random_data:
+            # if base_entropy is None use default seed (deterministic)
+            seed = 0 if self.base_entropy is None else self.base_entropy
             # we combine the base entropy with the sample index; default_rng hashes these to ensure streams are independent for different indexes.
-            rng = np.random.default_rng([self.base_entropy, index])
+            rng = np.random.default_rng([seed, index])
         else:
             rng = np.random.default_rng()
 
