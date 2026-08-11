@@ -118,3 +118,6 @@ class RRCPulseShapeFilter(AbstractPulseShapeFilter):
         pulse_shape = np.convolve(taps,pulse_shape)
         return sp.upfirdn(pulse_shape,symbols,up=samples_per_symbol,down=1)
     
+if __name__ == '__main__':
+    filter = GaussianPulseShapeFilter(bandwidth_mode='fixed', bandwidth=5)
+    print(filter)
